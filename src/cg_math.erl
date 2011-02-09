@@ -1,37 +1,37 @@
 %%%-------------------------------------------------------------------
-%%% @author Martin Logan <martinjlogan@sixfoe>
-%%% @copyright (C) 2008, Erlware
+%%% @author Erlware <core@erlware.org>
+%%% @copyright (C) 2008-2011, Erlware
 %%% @doc
 %%%  Mathematical functions needed for cryptograpic functions but not supplied by Erlang standard libs.
 %%% @end
-%%% Created : 25 Mar 2008 by Martin Logan <martinjlogan@sixfoe>
 %%%-------------------------------------------------------------------
 -module(cg_math).
 
 %% API
 -export([
-	 primes/1, 
-	 prime/1, 
-	 is_prime/1, 
-	 coprime/2,
-	 small_coprime/1,
-	 floor/1,
-	 exp_mod/3,
-	 gcd/2,
-	 extended_gcd/2
-	]).
+         primes/1,
+         prime/1,
+         is_prime/1,
+         coprime/2,
+         small_coprime/1,
+         floor/1,
+         exp_mod/3,
+         gcd/2,
+         extended_gcd/2
+        ]).
 
--define(SMALL_PRIMES, [2,3,5,7,11,13,17,19,23,29,31,37,41,43, 47,53,59,61,67,71,73,79,83,89,97]).
+-include_lib("eunit/include/eunit.hrl").
+
+-define(SMALL_PRIMES, [2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97]).
 
 %%%===================================================================
 %%% API
 %%%===================================================================
 
-%%--------------------------------------------------------------------
-%% @doc Returns all prime numbers from the first prime number to N
-%% @spec primes(N) -> [integer()]
+%% @doc
+%%  Returns all prime numbers from the first prime number to N
 %% @end
-%%--------------------------------------------------------------------
+-spec primes(N::integer) -> [integer()].
 primes(N) when N < 2 ->
     [];
 primes(2) ->
@@ -57,25 +57,23 @@ primeit(M, I, S, MRoot, Half) ->
 	    NS   = vacumeit(array:set(J, 0, S), M, J, Half),
 	    primeit(2 * NewI + 3, NewI, NS, MRoot, Half)
     end.
-	    
+
 vacumeit(S, _M, J, Half) when J >= Half ->
     S;
 vacumeit(S, M, J, Half) ->
     vacumeit(array:set(J, 0, S), M, J + M, Half).
 
 %%--------------------------------------------------------------------
-%% @doc Generate a prime of requiring N number of bytes to represent or that is N decimal digits long.
-%% @spec prime(N::integer(), Type) -> integer()
-%% where
-%%  Type = digits | bytes
+%% @doc
+%%  Generate a prime of requiring N number of bytes to represent or that is N decimal digits long.
 %% @end
 %%--------------------------------------------------------------------
+-spec prime(N::integer(), Type::[integer()] | [byte()]) -> integer().
 prime(N, Type) ->
     TestPrime = random_odd_integer(N, Type),
     prime1(TestPrime).
 
-%% @spec prime(N::integer()) -> integer()
-%% @equiv prime(N, digits)
+-spec prime(N::integer()) -> integer().
 prime(N) ->
     prime(N, digits).
 
@@ -86,44 +84,44 @@ prime1(PrimeCandidate) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc Returns the highest integer less than or equal to the number N.
-%% @spec floor(N) -> [integer()]
+%% @doc
+%%  Returns the highest integer less than or equal to the number N.
 %% @end
 %%--------------------------------------------------------------------
+-spec floor(N::float()) -> integer.
 floor(N) ->
     case round(N) of
 	RN when RN =< N -> RN;
 	RN -> RN - 1
     end.
-	    
+
 %%--------------------------------------------------------------------
-%% @doc Find the smallest coprime number less than N.
-%% @spec small_coprime(N) -> integer()
+%% @doc
+%%  Find the smallest coprime number less than N.
 %% @end
 %%--------------------------------------------------------------------
-small_coprime(N) ->    
-    coprime(N, 2).    
-			
+-spec small_coprime(N::integer()) -> integer().
+small_coprime(N) ->
+    coprime(N, 2).
+
 %%--------------------------------------------------------------------
-%% @doc Find a coprime number less than N and greater than E.
-%% @spec coprime(N, E) -> integer()
+%% @doc
+%%  Find a coprime number less than N and greater than E.
 %% @end
 %%--------------------------------------------------------------------
-coprime(N, E) ->    
+-spec coprime(N::integer(), E::integer()) -> integer().
+coprime(N, E) ->
     case gcd(N, E) of
 	1 -> E;
 	_ -> coprime(N, E + 1)
     end.
 
 %%--------------------------------------------------------------------
-%% @doc Expoentiation modulus; Msg ^ P mod N.
-%% @spec exp_mod(Msg, N, P) -> integer()
-%% where
-%%  Msg = integer()
-%%  N = integer()
-%%  P = integer()
+%% @doc
+%%  Expoentiation modulus; Msg ^ P mod N.
 %% @end
 %%--------------------------------------------------------------------
+-spec exp_mod(Msg::integer(), N::integer(), P::integer()) -> integer().
 exp_mod(Msg, N, P) ->
     exp_mod1(Msg, N, P) rem N.
 
@@ -136,24 +134,26 @@ exp_mod1(Msg, N, P) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc Find the greatest common divisor of two numbers A an B
-%% @spec gcd(A, B) -> integer()
+%% @doc
+%%  Find the greatest common divisor of two numbers A an B
 %% @end
 %%--------------------------------------------------------------------
+-spec gcd(A::integer(), B::integer()) -> integer().
 gcd(A, B) when A < B ->
     gcd(B, A);
-gcd(A, 0) -> 
+gcd(A, 0) ->
     A;
 gcd(A, B) ->
     gcd(B, A rem B).
 
 %%--------------------------------------------------------------------
-%% @doc Find numbers X and Y such that AX + BY = gcd(A, B)
-%% @spec extended_gcd(A::integer(), B::integer()) -> {X::integer(), Y::integer()}
+%% @doc
+%%  Find numbers X and Y such that AX + BY = gcd(A, B)
 %% @end
 %%--------------------------------------------------------------------
+-spec extended_gcd(A::integer(), B::integer()) -> {X::integer(), Y::integer()}.
 extended_gcd(A, B) ->
-    case A rem B of 
+    case A rem B of
        0 ->
 	    {0, 1};
        N ->
@@ -162,11 +162,12 @@ extended_gcd(A, B) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc Determine if a number is prime
-%% See http://en.wikipedia.org/wiki/Fermat%27s_little_theorem for explanation of this algorithm
-%% @spec is_prime(N::integer()) -> bool()
+%% @doc
+%%  Determine if a number is prime
+%%  See http://en.wikipedia.org/wiki/Fermat%27s_little_theorem for explanation of this algorithm
 %% @end
 %%--------------------------------------------------------------------
+-spec is_prime(N::integer()) -> boolean().
 is_prime(D) when D > 9, D < 100 ->
     lists:member(D, lists:nthtail(4, ?SMALL_PRIMES));
 is_prime(D) when D < 10 ->
@@ -221,10 +222,17 @@ random_odd_binary(2, Acc) ->
     <<Acc/binary, 1>>;
 random_odd_binary(Bytes, Acc) ->
     random_odd_binary(Bytes - 1, <<Acc/binary, (random:uniform(255))>>).
-    
+
 %%%===================================================================
 %%% Test functions
 %%%===================================================================
-%is_prime_test() ->
-%?assertMatch(true, is_prime(671998030559713968361666935769)),
-%?assertMatch(false, is_prime(671998030559713968361666935763)).
+is_prime_test() ->
+    ?assertMatch(true, is_prime(671998030559713968361666935769)),
+    ?assertMatch(false, is_prime(671998030559713968361666935763)).
+
+floor_test() ->
+    ?assertMatch(7, floor(7.4)),
+    ?assertMatch(-8, floor(-7.4)),
+    ?assertMatch(7, floor(7.0)),
+    ?assertMatch(7, floor(7)),
+    ?assertMatch(0, floor(0.8)).
