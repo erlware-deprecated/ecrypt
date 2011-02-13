@@ -2,14 +2,19 @@
 %%% @author Erlware <core@erlware.org>
 %%% @copyright (C) 2008-2011, Erlware
 %%% @doc
-%%%  Mathematical functions needed for cryptograpic functions but not supplied by Erlang standard libs.
+%%%  A pure Erlang version of the RSA public key cryptography algorithm.
 %%% @end
 %%%-------------------------------------------------------------------
--module(cg_math).
+-module(ecrypt).
 
 %% API
 -export([
-         primes/1,
+         keygen/0,
+         keygen/1,
+         keygen/2,
+         encrypt/3,
+         decrypt/3,
+	 primes/1,
          prime/1,
          is_prime/1,
          coprime/2,
@@ -27,6 +32,62 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @doc
+%%  Generate rsa public and private keys. The primes chose to do the generation should be of a length
+%%  specified by Digits.
+%% @end
+%%--------------------------------------------------------------------
+-spec keygen(Digits::[integer()]) -> {ok, {{public_key, {N::integer(), E::integer()}}, {private_key, {N::integer(), D::integer()}}, {max_message_size, Bytes::[byte()]}}}.
+keygen(Digits) ->
+    P = prime(Digits),
+    Q = prime(Digits),
+    case keygen(P, Q) of
+	{error, {negative_private_key_exponent, _}} -> keygen(Digits);
+	Keys                                        -> Keys
+    end.
+
+keygen() ->
+    keygen(64).
+
+%%--------------------------------------------------------------------
+%% @doc
+%%  Generate rsa public and private keys. Key gen needs as input two prime numbers P and Q
+%% @end
+%%--------------------------------------------------------------------
+-spec keygen(P::integer(), Q::integer()) -> {ok, {{public_key, {N::integer(), E::integer()}}, {private_key, {N::integer(), D::integer()}}, {max_message_size, Bytes::[byte()]}}} | {error, Reason::string()}.
+keygen(P, Q) ->
+    N = P * Q,
+    % Compute the Eulers Totient of two primes
+    TN = (P - 1) * (Q - 1),
+    E = small_coprime(TN),
+    case extended_gcd(E, TN) of
+	{D, _} when D < 0 ->
+	    %% @todo Find out if this can be prevented. Is there a better way to pick primes. What about Rabin-Miller?
+	    {error, {negative_private_key_exponent,
+		     "the primes chosen produced a negative value for d - please pick new primes"}};
+	{D, _} ->
+	    {ok, {{public_key, {N, E}}, {private_key, {N, D}}, {max_message_size, lists:min([P, Q])}}}
+    end.
+
+%%--------------------------------------------------------------------
+%% @doc
+%%  Encrypt a number.
+%% @end
+%%--------------------------------------------------------------------
+-spec encrypt(Msg::integer(), N::integer(), E::integer()) -> integer().
+encrypt(Msg, N, E) ->
+    exp_mod(Msg, N, E).
+
+%%--------------------------------------------------------------------
+%% @doc
+%%  Decrypt a number.
+%% @end
+%%--------------------------------------------------------------------
+-spec decrypt(Msg::integer(), N::integer(), D::integer()) -> integer().
+decrypt(Msg, N, D) ->
+    exp_mod(Msg, N, D).
 
 %% @doc
 %%  Returns all prime numbers from the first prime number to N
@@ -194,6 +255,7 @@ is_prime(N, I, Digits) ->
 	    is_prime(N, I, Digits)
     end.
 
+
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
@@ -223,9 +285,19 @@ random_odd_binary(2, Acc) ->
 random_odd_binary(Bytes, Acc) ->
     random_odd_binary(Bytes - 1, <<Acc/binary, (random:uniform(255))>>).
 
+
 %%%===================================================================
 %%% Test functions
 %%%===================================================================
+decrypt_test() ->
+    Code = encrypt(4, 6097, 7),
+    ?assertMatch(4, decrypt(Code, 6097, 4243)).
+
+%full_rsa_test() ->
+%    {ok, {{_, {N, E}}, {_, {N, D}}, _}} = keygen(500),
+%    Code = encrypt(1, N, E),
+%    ?assertMatch(1, decrypt(Code, N, D)).
+
 is_prime_test() ->
     ?assertMatch(true, is_prime(671998030559713968361666935769)),
     ?assertMatch(false, is_prime(671998030559713968361666935763)).
